@@ -17,6 +17,36 @@ def getRasterValueAtPoint(ds, x, y):
 
     return value
 
+def pointToRaster(inRasPath, outRasPath, dsPath, layerName):
+    driverShp = ogr.GetDriverByName('Esri shapefile')
+    in_ds = driverShp.CreateDataSource(dsPath)
+
+    if in_ds is None:
+        print 'Error opening input shapefile folder'
+
+    in_ras = gdal.Open(inRasPath)
+    out_ras = gdal.GetDriverByName('GTiff').Create(outRasPath, in_ras.RasterXSize, in_ras.RasterYSize, 1, gdal.GDT_Float32)
+    geot = in_ras.GetGeoTransform()
+    out_ras.SetGeoTransform(geot)
+    inv_geot = gdal.InvGeoTransform(geot)
+    in_data = in_ras.GetRasterBand(1).ReadAsArray()
+    out_data = np.zeros(in_data.shape, np.float)
+
+    pt_lyr = in_ds.GetLayerByName(layerName)
+
+    pt_lyr.ResetReading()
+
+    for pt in pt_lyr:
+        pt_geom = pt.GetGeometryRef()
+        depth = pt.GetField('dam_elev') - pt.GetField('elev')
+        if depth > 0:
+            col, row = gdal.ApplyGeoTransform(inv_geot, pt_geom.GetX(), pt_geom.GetY())
+            out_data[row, col] = depth
+            print depth
+
+    out_ras.GetRasterBand(1).WriteArray(out_data)
+    out_ras.GetRasterBand(1).SetNoDataValue(0)
+
 def sampleRasterOnLine_LowVal(rasterPath, startX, startY, azimuth, distance):
     az1 = addDegrees(azimuth, 90.0)
     az2 = addDegrees(azimuth, -90.0)

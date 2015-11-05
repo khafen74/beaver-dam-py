@@ -26,13 +26,13 @@ def setDataFiles(nResolution):
         dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/ponddepth_1m.tif')
         dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/freqwet_1m.tif')
         dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/freqwet_1m.csv')
-        dataFiles.append('dempoints_1m_clip')
+        dataFiles.append('dempoints_1m_clip2')
     elif nResolution == 10:
         dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/02_rasIn/templefk_10m_ws.tif')
         dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/ponddepth_10m.tif')
         dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/freqwet_10m.tif')
         dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/freqwet_10m.csv')
-        dataFiles.append('dempoints_10m_clip')
+        dataFiles.append('dempoints_10m_clip2')
 
     return dataFiles
 
@@ -42,3 +42,8 @@ def setDataFiles(nResolution):
 dataFiles = setDataFiles(10)
 cleanup(dataFiles[1])
 createDamPoints(dataFiles[2], dataFiles[0], dataFiles[1])
+createSearchPolygons(dataFiles[1])
+pointsInPolygon(dataFiles[0], dataFiles[1], dataFiles[6], 'DamSearchPolygons')
+pointToRaster(dataFiles[2], dataFiles[3], dataFiles[1], 'PondPts')
+
+print 'Done!'

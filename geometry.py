@@ -1,7 +1,5 @@
 from osgeo import ogr
-from osgeo import osr
 import math
-from shapely.geometry import point, polygon
 from shapely.wkb import loads
 
 def addDegrees(base, addValue):
@@ -91,9 +89,7 @@ def pointsInPolygon(inPath, outPath, ptsLyrName, polyLyrName):
     poly_lyr = out_ds.GetLayerByName(polyLyrName)
     pndPts_lyr = out_ds.CreateLayer('PondPts', pt_lyr.GetSpatialRef(), ogr.wkbPoint)
     setPondPointsFieldDefn(pndPts_lyr)
-    print poly_lyr.GetFeatureCount()
 
-    count = 0.0
     while 1:
         poly_feat = poly_lyr.GetNextFeature()
         if not poly_feat:
@@ -113,14 +109,6 @@ def pointsInPolygon(inPath, outPath, ptsLyrName, polyLyrName):
                 newPt_feat.SetField('elev', pt_feat.GetField('elev'))
                 newPt_feat.SetGeometry(pt_geom)
                 pndPts_lyr.CreateFeature(newPt_feat)
-                found = True
-
-        count += 1
-        print count2
-        if found:
-            print count
-
-
 
 def setDamPointsFieldDefn(layer):
     field = ogr.FieldDefn('endx', ogr.OFTReal)

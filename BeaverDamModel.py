@@ -1,6 +1,59 @@
 from raster import *
 from geometry import *
 from stats import *
+import os
+
+def cleanup(directory):
+    #delete files in diretory
+    os.chdir(directory)
+    for file in os.listdir('.'):
+        os.remove(file)
+
+def runSingle(res):
+    dataFiles = setDataFiles(res)
+    cleanup(dataFiles[1])
+    damHeight = createDamPoints(dataFiles[2], dataFiles[0], dataFiles[1])
+    createSearchPolygons(dataFiles[1])
+    pointsInPolygon(dataFiles[0], dataFiles[1], dataFiles[6], 'DamSearchPolygons')
+    area = pointToRaster(dataFiles[2], dataFiles[3], dataFiles[1], 'PondPts')
+
+def runMonteCarlo(nIterations, res):
+    dataFiles = setDataFiles(res)
+    cleanup(dataFiles[1])
+    createInundationRaster(dataFiles[2], dataFiles[4])
+    areas = np.empty([nIterations])
+    heights = np.empty([nIterations])
+
+    for i in range(0, nIterations, 1):
+        heights[i] = createDamPoints(dataFiles[2], dataFiles[0], dataFiles[1])
+        createSearchPolygons(dataFiles[1])
+        pointsInPolygon(dataFiles[0], dataFiles[1], dataFiles[6], 'DamSearchPolygons')
+        areas[i] = pointToRaster(dataFiles[2], dataFiles[3], dataFiles[1], 'PondPts')
+        updateInundationRaster(dataFiles[4], dataFiles[3])
+        cleanup(dataFiles[1])
+        print 'Finished %s of %s. Area: %s, Height: %s' % (i+1, nIterations, areas[i], heights[i])
+
+    print 'Final Mean Height: %s, Final Mean Area: %s' % (heights.mean(), areas.mean())
+
+def setDataFiles(nResolution):
+    dataFiles = []
+    dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/01_shpIn')
+    dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/03_shpOut')
+
+    if nResolution == 1:
+        dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/02_rasIn/fme450000.tif')
+        dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/ponddepth_1m.tif')
+        dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/freqwet_1m.tif')
+        dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/freqwet_1m.csv')
+        dataFiles.append('dempoints_1m_clip2')
+    elif nResolution == 10:
+        dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/02_rasIn/templefk_10m_ws.tif')
+        dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/ponddepth_10m.tif')
+        dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/freqwet_10m.tif')
+        dataFiles.append('E:/etal/Projects/NonLoc/Beaver_Modeling/02_Data/z_TestRuns/04_rasOut/freqwet_10m.csv')
+        dataFiles.append('dempoints_10m_clip2')
+
+    return dataFiles
 
 def createDamPoints(demPath, inFeatPath, outFeatPath):
     driverShp = ogr.GetDriverByName('Esri shapefile')
@@ -42,7 +95,18 @@ def createDamPoints(demPath, inFeatPath, outFeatPath):
         setDamFeature(newDam_feat, newDam_pt, elev, damHeight, slope, x, y)
         damsOut_lyr.CreateFeature(newDam_feat)
 
-    print damSum/nDams
+    return (damSum/nDams)
+
+def createInundationRaster(inRasPath, outRasPath):
+    in_ras = gdal.Open(inRasPath)
+    geot = in_ras.GetGeoTransform()
+    out_ras = gdal.GetDriverByName('GTiff').Create(outRasPath, in_ras.RasterXSize, in_ras.RasterYSize, 1, gdal.GDT_Float32)
+    out_ras.SetGeoTransform(geot)
+    in_data = np.zeros((in_ras.RasterYSize,in_ras.RasterXSize), dtype=np.float)
+    band = out_ras.GetRasterBand(1)
+    band.WriteArray(in_data)
+    band.SetNoDataValue(0.0)
+    del band, in_ras, out_ras
 
 def createSearchPolygons(outFeatPath):
     ANGLE_OFFSET = [-90.0, -45.0, 0.0, 45.0, 90.0]
@@ -85,4 +149,3 @@ def createSearchPolygons(outFeatPath):
 
     sPoly_lyr.SyncToDisk()
 
-    print count

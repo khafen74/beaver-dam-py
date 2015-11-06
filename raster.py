@@ -2,6 +2,12 @@ from osgeo import gdal
 import numpy as np
 from geometry import *
 
+def calcArea(array, noData, geot):
+    array = np.where(array != noData, 1, 0)
+    sum = array.sum()
+    area = sum * geot[1]**2
+    return area
+
 def cleanInundationRaster(raster):
     newRaster = np.empty(raster.shape, np.float)
     newRaster = np.where(raster <= 0.0, -9999, raster)
@@ -42,10 +48,12 @@ def pointToRaster(inRasPath, outRasPath, dsPath, layerName):
         if depth > 0:
             col, row = gdal.ApplyGeoTransform(inv_geot, pt_geom.GetX(), pt_geom.GetY())
             out_data[row, col] = depth
-            print depth
 
     out_ras.GetRasterBand(1).WriteArray(out_data)
     out_ras.GetRasterBand(1).SetNoDataValue(0)
+    area = calcArea(out_data, 0.0, geot)
+    del in_ras, out_ras
+    return area
 
 def sampleRasterOnLine_LowVal(rasterPath, startX, startY, azimuth, distance):
     az1 = addDegrees(azimuth, 90.0)
@@ -79,4 +87,21 @@ def sampleRasterOnLine_LowVal(rasterPath, startX, startY, azimuth, distance):
                 x = newX
                 y = newY
 
+    del in_ds
+
     return lowVal, x, y
+
+def updateInundationRaster(inPath, depthPath):
+    dep_ras = gdal.Open(depthPath)
+    in_ras = gdal.Open(inPath, gdal.GA_Update)
+
+    dep_band = dep_ras.GetRasterBand(1)
+    in_band = in_ras.GetRasterBand(1)
+
+    dep_data = dep_band.ReadAsArray()
+    in_data = in_band.ReadAsArray()
+
+    in_data = np.where(dep_data > 0.0, in_data+1, in_data)
+
+    in_band.WriteArray(in_data)
+
